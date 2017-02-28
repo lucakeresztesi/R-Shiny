@@ -1,65 +1,75 @@
 
 shinyServer(
-  function(input, output) {
+  function(input, output,session){
     
-# Plotting all four graphs in main panel
+    observe({
+      updateSelectInput(session, "dest_select",
+                               choices = unique(dt[or_airport==input$origin_select]$dest_airport),
+                               selected = unique(dt[or_airport==input$origin_select]$dest_airport[1]))
+    })
     
-    output$number_Plot <- renderPlot({
-      
-      subs <- subset(dt, 
-                    or_airport == input$origin_select, 
-                    dest_airport == input$dest_select,
-                    distance == input$distance_slider,
-                    date <= input$ending_date,
-                    date >= input$starting_date,
-                    carriercom == input$carriers,
-                    weekday == input$weekday
-                    )
-      
-      # Number of flights per Carrier Company
+    dt <- data.table(dt)
+    
+    output$bar_Plot <- renderPlot({
     
       flight_number_title = paste(
         "Number of flights in the given time period from", 
-        input$origin_select, "to", input$dest_select
-        )
-      
-      ggplot(subs, aes(x = input$carriers, fill = input$carriers)) + 
-        geom_bar(width = 1.0 , colour = 'white') +
-        theme(legend.position = "none") + 
-        coord_flip() +
-        xlab('Carrier Company') + 
-        ylab('Number of Flights') + 
-        ggtitle(flight_number_title) + 
-        theme(axis.text.x = 
-              element_text(angle = 45, hjust = 1), 
-              text = element_text(size = 16))
-    })
+        input$origin_select, "to", input$dest_select)
     
-    output$distance_Plot <- renderPlot({
-      
-      subs <- subset(dt, 
-                     or_airport == input$origin_select, 
-                     dest_airport == input$dest_select,
-                     distance == input$distance_slider,
-                     date <= input$ending_date,
-                     date >= input$starting_date,
-                     carriercom == input$carriers
-      )
-      
-      # Heatmap of Weekdays and mean min Arrival Delay per Carrier Company
-      
-      delay_weekday_title = paste(
-        "Arrival delay from", 
-        input$origin_select, "to", input$dest_select
-      )
-      
-      
-      ggplot(subs, aes(input$dest_select, input$origin_select, fill = count)) + 
-        geom_tile() + 
-        scale_fill_gradient(low = "blue", high = "yellow") +
-        xlab('Carrier Company') + 
-        ylab('Day of the week') + 
-        ggtitle(delay_weekday_title)
+      ggplot(dt[
+          or_airport == input$origin_select &
+          dest_airport == input$dest_select &
+          date >= input$starting_date &
+          date <= input$ending_date &
+          weekday %in% input$weekdays_sub &
+          carriercom %in% input$carriers_selected, .N, by = carriercom],
+        aes(
+          x = carriercom, 
+          fill = carriercom)) +
+        geom_col(aes(y = N)) +
+        theme(legend.position = "none") +
+        coord_flip() +
+        xlab('Carrier Company') +
+        ylab('Number of flights with the given parameters') +
+        ggtitle(flight_number_title)
+
     })
+
+    output$delay_Plot <- renderPlot({
+      
+      flight_delay_title = paste(
+        "Delay regressed on Air time for flights in the given time period from", 
+        input$origin_select, "to", input$dest_select)
+    
+    ggplot(dt[
+        or_airport == input$origin_select &
+        dest_airport == input$dest_select &
+        date >= input$starting_date &
+        date <= input$ending_date &
+        weekday %in% input$weekdays_sub &
+        carriercom %in% input$carriers_selected &
+        distance %in% c(input$distance_selected[1]:input$distance_selected[2])], 
+        aes(
+          x = air_time, 
+          y = arr_delay)) + 
+      geom_point(size = 2, aes(col = (dep_delay))) +
+      geom_smooth(method = "lm", 
+                    formula = y ~ poly(x, as.numeric(input$degree)),
+                    se = as.numeric(input$se)) +
+        xlab('Air time of flight') +
+        ylab('Arrival delay of flight') +
+        ggtitle(flight_delay_title)+scale_color_distiller("Departure Delay", palette = "Spectral")
+    })
+    output$dto <- DT::renderDataTable(dt[
+        or_airport == input$origin_select &
+        dest_airport == input$dest_select &
+        date >= input$starting_date &
+        date <= input$ending_date &
+        weekday %in% input$weekdays_sub &
+        carriercom %in% input$carriers_selected &
+        distance %in% c(input$distance_selected[1]:input$distance_selected[2]),.(
+          date, or_airport, dest_airport, dep_delay, arr_delay)],
+      options = list(lengthMenu = c(10, 20, 50), pageLength = 5))
   }
-)
+  )
+

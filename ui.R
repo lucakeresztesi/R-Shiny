@@ -1,14 +1,4 @@
 
-# data(package = 'nycflights13')
-# If working on a Shiny application, than create a tool for exploratory 
-# data analysis on the flights dataset including
-# inputs to filter data on date and distance,
-# at least one static plot,
-# and an HTML table.
-# Please upload your project to Moodle before Feb 28 2017. Your submission should include:
-# the ui.R and server.R (and any other files required to run the application) in a zip archive
-
-
 shinyUI(
   fluidPage(
     titlePanel('The New York City Airtraffic Delays Comparison Tool'),
@@ -17,12 +7,12 @@ shinyUI(
         
         selectInput('origin_select', 
                     'Choose flight origin:',
-                    choices = airport_comb$or_airport,
+                    choices = unique(dt$or_airport),
                     selected = 'John F Kennedy Intl'),
         
         selectInput('dest_select', 
                     'Choose flight destination:', 
-                    choices = airport_comb$dest_airport,
+                    choices = unique(dt$dest_airport),
                     selected = 'Miami Intl'),
         
         dateInput('starting_date',
@@ -37,29 +27,40 @@ shinyUI(
                   min = min(dt$date),
                   max = max(dt$date)),
                   
-        sliderInput('distance_slider', 
+        checkboxGroupInput('weekdays_sub', 
+                           "Select days of week to include:",
+                           choices = unique(dt$weekday),
+                           selected=unique(dt$weekday)),
+        
+        checkboxGroupInput('carriers_selected', 
+                           "Select carriers to include:",
+                           choices = unique(dt$carriercom),
+                           selected=unique(dt$carriercom)),
+        
+        sliderInput('distance_selected', 
                     "Select distance range:",
                     min = min(dt$distance), 
                     max = max(dt$distance),
                     step = 1, 
-                    value = mean(dt$distance),
+                    value =c(min(dt$distance),max(dt$distance)),
                     round = TRUE, 
                     ticks = TRUE),
         
-        checkboxGroupInput('carriers', 
-                           "Select Airines to include:",
-                           choices = airlines$carriercom)
+        sliderInput('degree', "Polynomial",
+                    min = 1, max = 16, value = 1), 
         
-       
+        checkboxInput('se', 'Confidence Interval')
+        
+        
+    
       ),
       
 # creating tabs for plots on main panel
       mainPanel(
         tabsetPanel(type = 'tabs', 
-                    tabPanel('Flights', plotOutput('number_Plot')), 
-                    tabPanel('Delay and Distance', plotOutput('distance_Plot')), 
-                    tabPanel('Delay and Weekdays', plotOutput('weekday_Plot')), 
-                    tabPanel('Delay and Airtime', plotOutput('airtime_Plot')) 
+                    tabPanel('Number of flights', plotOutput('bar_Plot')), 
+                    tabPanel('Delay and Air time', plotOutput('delay_Plot')),
+                    tabPanel("HTML Table", dataTableOutput("dto"))
                     )
       )
      )

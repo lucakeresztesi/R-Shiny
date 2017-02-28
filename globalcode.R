@@ -1,4 +1,7 @@
-install.packages("nycflights13")
+# install.packages("nycflights13")
+# install.packages('hexbin')
+# install.packages('DT')
+# install.packages('shinydashboard')
 
 rm(list = ls())
 
@@ -8,7 +11,8 @@ library(ggplot2)
 library(dplyr)
 library(data.table)
 library(pander)
-library(reshape2)
+library(DT)
+library(shinydashboard)
 
 # Loading data
 data(package = 'nycflights13')
@@ -38,6 +42,7 @@ dt <- merge(dr, airports,
 
 dat <- NULL
 dr <- NULL
+dt <- na.omit(dt)
 
 # Mutating the time and date variables
 dt$sch_arr_hour <- as.numeric(dt$sched_arr_time)%/%100
@@ -54,8 +59,8 @@ dt$sch_dep_min <- as.numeric(dt$sched_dep_time)%%100
 
 dt$date <- as.factor(format(strptime(dt$time_hour, format = "%Y-%m-%d")))
 dt$date <- as.Date(dt$date)
-dt$weekday <- as.factor(format(strptime(dt$time_hour, format = "%Y-%m-%d %H:%M"), "%A"))
 
+dt$weekday <- as.factor(format(strptime(dt$time_hour, format = "%Y-%m-%d %H:%M"), "%A"))
 # Keeping only the needed variables
 dt$origin <- NULL
 dt$carrier <- NULL
@@ -69,32 +74,4 @@ dt$minute <- NULL
 dt$time_hour <- NULL
 
 dt[, weekday := weekdays(date)]
-airport_comb <- dt[, list(count = .N), by = list(or_airport, dest_airport)]
-weekdays_comb <- dt[, list(weekday), by = arr_delay]
 
-
-# Number Plot
-flight_number_title = paste("Number of flights in the given time period from", 
-                            dt$or_airport, "to", dt$dest_airport)
-
-ggplot(dt, aes(x = carriercom, fill = carriercom)) + 
-  geom_bar(width = 1, colour = 'white') +
-  geom_text(aes(y=..count.., label=..count..),
-                   stat = "count", color = "white",
-                   hjust = 1.0, size = 3) +
-  theme(legend.position = "none") + 
-  coord_flip() +
-  xlab('Carrier Company') + 
-  ggtitle(flight_number_title)
-
-# Weekday Plot
-delay_weekday_title = paste("Arrival delay from", dt$or_airport, "to", dt$dest_airport)
-
-
-delay_weekday <- dt[, list(m_arr_delay = mean(arr_delay, na.rm = TRUE)), by = list(weekday, carriercom)]
-ggplot(delay_weekday, aes(x = carriercom, y = weekday, fill = m_arr_delay)) +
-  geom_tile() + 
-  scale_fill_gradient(low = "blue", high = "yellow") +
-  xlab('Carrier Company') + 
-  ylab('Day of the week') + 
-  ggtitle(delay_weekday_title)
